@@ -2,17 +2,17 @@
 
 > *The World Cup pundit chat where no one escapes their past takes.*
 
-A tournament-long AI pundit group chat built on Walrus Memory. Four opinionated personas — the Stats Nerd, the Vibes Guy, the Contrarian, and the Homer — react to real World Cup 2026 results, remember everything they say, and get held accountable for it by the Commissioner.
+A tournament-long AI pundit group chat built on Walrus Memory. Four opinionated personas - the Stats Nerd, the Vibes Guy, the Contrarian, and the Homer - react to real World Cup 2026 results, remember everything they say, and get held accountable for it by the Commissioner.
 
-The longer the tournament runs, the more useful the agent becomes — because it remembers.
+The longer the tournament runs, the more useful the agent becomes - because it remembers.
 
 ---
 
 ## What It Does
 
-Every pundit take is stored on Walrus as individually-recallable atomic facts. Before each pundit speaks, their prior statements are recalled from Walrus and injected into the prompt — so they reference what they actually said before, not a generic take. The Commissioner agent sweeps all four pundit namespaces after every match, finds contradictions between prior statements and the result, and reads them back verbatim with on-chain blob IDs.
+Every pundit take is stored on Walrus as individually-recallable atomic facts. Before each pundit speaks, their prior statements are recalled from Walrus and injected into the prompt, so they reference what they actually said before, not a generic take. The Commissioner agent sweeps all four pundit namespaces after every match, finds contradictions between prior statements and the result, and reads them back verbatim with on-chain blob IDs.
 
-By the knockout rounds the chat has a memory of itself: running records per pundit, callbacks, grudges, and a personal predictor profile for the user. At the end of each phase, an Awards Show roasts everyone — Most Accurate Pundit, Biggest Flip-Flop (two contradictory quotes cited side by side from chain), Most Stubborn, and a personal roast of the user's predictions.
+By the knockout rounds the chat has a memory of itself: running records per pundit, callbacks, grudges, and a personal predictor profile for the user. At the end of each phase, an Awards Show roasts everyone. Most Accurate Pundit, Biggest Flip-Flop (two contradictory quotes cited side by side from chain), Most Stubborn, and a personal roast of the user's predictions.
 
 ---
 
@@ -30,7 +30,7 @@ By the knockout rounds the chat has a memory of itself: running records per pund
 
 ## How Walrus Memory is Used
 
-One `MemWalAccount`, one delegate key, five namespaces — one per pundit, one for the Commissioner.
+One `MemWalAccount`, one delegate key, five namespaces - one per pundit, one for the Commissioner.
 
 | Operation | Where | What it does |
 |-----------|-------|-------------|
@@ -46,10 +46,10 @@ Every message in the UI has a **🔍 MEMORY** button that shows exactly which Wa
 
 ## Stack
 
-- **Next.js 14** — App Router, TypeScript, Tailwind CSS
-- **@mysten-incubation/memwal** — Walrus Memory TypeScript SDK
-- **Anthropic Claude** (claude-sonnet-4-6) — pundit persona generation
-- **football-data.org** — real World Cup 2026 match results (graceful mock fallback)
+- **Next.js 14** - App Router, TypeScript, Tailwind CSS
+- **@mysten-incubation/memwal** - Walrus Memory TypeScript SDK
+- **Anthropic Claude** (claude-sonnet-4-6) - pundit persona generation
+- **football-data.org** - real World Cup 2026 match results (graceful mock fallback)
 - In-memory state for structured data (W/L tallies) — per SDK documentation, semantic recall is not suited for deterministic key-based reads
 
 ---
@@ -59,7 +59,7 @@ Every message in the UI has a **🔍 MEMORY** button that shows exactly which Wa
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/receipts-fc
+git clone https://github.com/Ted1166/receipts-fc
 cd receipts-fc
 npm install
 cp .env.local.example .env.local
@@ -67,15 +67,15 @@ cp .env.local.example .env.local
 
 ### 2. Get your credentials
 
-**Walrus Memory** — [memory.walrus.xyz](https://memory.walrus.xyz)
+**Walrus Memory** - [memory.walrus.xyz](https://memory.walrus.xyz)
 - Connect a Sui wallet
 - Create a MemWalAccount
 - Generate a delegate key
 - Copy the Account Object ID and delegate private key
 
-**Anthropic** — [console.anthropic.com](https://console.anthropic.com)
+**Anthropic** - [console.anthropic.com](https://console.anthropic.com)
 
-**football-data.org** — [football-data.org/client/register](https://www.football-data.org/client/register) (optional — falls back to mock data)
+**football-data.org** - [football-data.org/client/register](https://www.football-data.org/client/register) (optional - falls back to mock data)
 
 ### 3. Fill in `.env.local`
 
@@ -100,7 +100,7 @@ npm run dev
 ## Usage
 
 **▶ TRIGGER MATCHDAY**
-Fetches the latest finished World Cup match, stores the result in Walrus, generates all four pundit takes plus a Commissioner verdict. Messages appear automatically — no refresh needed.
+Fetches the latest finished World Cup match, stores the result in Walrus, generates all four pundit takes plus a Commissioner verdict. Messages appear automatically, no refresh needed.
 
 **Chat with the pundits**
 Type anything in the input. All four pundits respond, each after recalling relevant prior statements from their own Walrus namespace. After a few matchdays they start referencing what they actually said before.
@@ -115,7 +115,7 @@ Click on any pundit message to see which blob IDs were recalled before generatio
 After two or more matchdays, triggers the end-of-phase roast ceremony with citations pulled directly from Walrus Memory.
 
 **▶ READ**
-Every pundit message has a text-to-speech button. Each persona has a distinct voice profile — the Commissioner reads slowest, the Vibes Guy fastest.
+Every pundit message has a text-to-speech button. Each persona has a distinct voice profile, the Commissioner reads slowest, the Vibes Guy fastest.
 
 ---
 
