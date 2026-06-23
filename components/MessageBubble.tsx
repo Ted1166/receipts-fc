@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useRef } from "react";
+
 type Citation = { text: string; blobId: string; explorerUrl: string };
 type ChatMessage = {
     id: string;
@@ -11,6 +13,60 @@ type ChatMessage = {
     citations?: Citation[];
     isContradiction?: boolean;
 };
+
+function cleanMarkdown(text: string): string {
+    return text
+        .replace(/^#{1,3}\s+/gm, "")
+        .replace(/^>\s+/gm, "")
+        .replace(/\*\*(.+?)\*\*/g, "$1")
+        .replace(/\*(.+?)\*/g, "$1")
+        .replace(/\s*---+\s*/g, " — ")
+        .replace(/^\s*[-–—]+\s*/g, "")
+        .trim();
+}
+
+const PUNDIT_VOICE: Record<string, { pitch: number; rate: number; voiceHint: string }> = {
+    "pundit-stats": { pitch: 0.9, rate: 1.1, voiceHint: "Google UK English Male" },
+    "pundit-vibes": { pitch: 1.3, rate: 1.25, voiceHint: "Google US English" },
+    "pundit-contrarian": { pitch: 0.8, rate: 0.95, voiceHint: "Google UK English Male" },
+    "pundit-homer": { pitch: 1.1, rate: 1.15, voiceHint: "Google UK English Female" },
+    commissioner: { pitch: 0.7, rate: 0.85, voiceHint: "Google UK English Male" },
+    user: { pitch: 1.0, rate: 1.0, voiceHint: "" },
+};
+
+function useSpeech() {
+    const [speaking, setSpeaking] = useState<string | null>(null);
+    const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+    const speak = (text: string, msgId: string, punditId: string) => {
+        if (!window.speechSynthesis) return;
+
+        if (speaking === msgId) {
+            window.speechSynthesis.cancel();
+            setSpeaking(null);
+            return;
+        }
+
+        window.speechSynthesis.cancel();
+        const config = PUNDIT_VOICE[punditId] ?? PUNDIT_VOICE.user;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.pitch = config.pitch;
+        utter.rate = config.rate;
+
+        const voices = window.speechSynthesis.getVoices();
+        const match = voices.find((v) => v.name === config.voiceHint)
+            ?? voices.find((v) => v.lang.startsWith("en"));
+        if (match) utter.voice = match;
+
+        utter.onend = () => setSpeaking(null);
+        utter.onerror = () => setSpeaking(null);
+        utteranceRef.current = utter;
+        setSpeaking(msgId);
+        window.speechSynthesis.speak(utter);
+    };
+
+    return { speaking, speak };
+}
 
 const PUNDIT_CONFIG: Record<string, { name: string; emoji: string; color: string; border: string; nameColor: string }> = {
     "pundit-stats": {
@@ -57,6 +113,8 @@ const PUNDIT_CONFIG: Record<string, { name: string; emoji: string; color: string
     },
 };
 
+let globalSpeaking: string | null = null;
+
 export function MessageBubble({
     message,
     onInspect,
@@ -64,6 +122,8 @@ export function MessageBubble({
     message: ChatMessage;
     onInspect?: () => void;
 }) {
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
     const config = PUNDIT_CONFIG[message.punditId] ?? {
         name: message.punditId.toUpperCase(),
         emoji: "🎙️",
@@ -75,6 +135,29 @@ export function MessageBubble({
     const isUser = message.punditId === "user";
     const isCommissioner = message.punditId === "commissioner";
     const hasCitations = message.citations && message.citations.length > 0;
+    const cleanText = cleanMarkdown(message.message);
+
+    const handleSpeak = () => {
+        if (!window.speechSynthesis) return;
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+        window.speechSynthesis.cancel();
+        const voiceConfig = PUNDIT_VOICE[message.punditId] ?? PUNDIT_VOICE.user;
+        const utter = new SpeechSynthesisUtterance(cleanText);
+        utter.pitch = voiceConfig.pitch;
+        utter.rate = voiceConfig.rate;
+        const voices = window.speechSynthesis.getVoices();
+        const match = voices.find((v) => v.name === voiceConfig.voiceHint)
+            ?? voices.find((v) => v.lang.startsWith("en"));
+        if (match) utter.voice = match;
+        utter.onend = () => setIsSpeaking(false);
+        utter.onerror = () => setIsSpeaking(false);
+        setIsSpeaking(true);
+        window.speechSynthesis.speak(utter);
+    };
 
     return (
         <div className={`relative rounded border ${config.border} ${config.color} p-3 ${isUser ? "ml-8" : ""}`}>
@@ -85,7 +168,7 @@ export function MessageBubble({
                 </div>
             )}
 
-            {/* Commissioner gets a special top bar */}
+            {/* Commissioner top bar */}
             {isCommissioner && (
                 <div className="flex items-center gap-1 mb-2 pb-2 border-b border-yellow-500/20">
                     <div className="w-1 h-4 bg-yellow-400 rounded" />
@@ -112,6 +195,19 @@ export function MessageBubble({
                     <span className="text-[10px] text-white/20 font-mono">
                         {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
+                    {/* TTS button */}
+                    {!isUser && (
+                        <button
+                            onClick={handleSpeak}
+                            title={isSpeaking ? "Stop reading" : "Read aloud"}
+                            className={`text-[10px] font-mono border px-1.5 py-0.5 rounded transition-colors ${isSpeaking
+                                    ? "text-yellow-400 border-yellow-400/60 bg-yellow-400/10"
+                                    : "text-white/25 border-white/10 hover:text-white/60 hover:border-white/30"
+                                }`}
+                        >
+                            {isSpeaking ? "⏹ STOP" : "▶ READ"}
+                        </button>
+                    )}
                     {onInspect && (
                         <button
                             onClick={onInspect}
@@ -125,9 +221,9 @@ export function MessageBubble({
             </div>
 
             {/* Message body */}
-            <p className="text-sm text-white/90 leading-relaxed font-sans">{message.message}</p>
+            <p className="text-sm text-white/90 leading-relaxed font-sans">{cleanText}</p>
 
-            {/* Prior citations — what was recalled before generating this response */}
+            {/* Prior citations */}
             {hasCitations && !isUser && (
                 <div className="mt-2 pt-2 border-t border-white/5">
                     <div className="text-[10px] font-mono text-white/30 mb-1">

@@ -10,13 +10,35 @@ export function AwardsModal({
     onClose: () => void;
 }) {
     const [roast, setRoast] = useState<string>("");
+    const [isEmpty, setIsEmpty] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
+    function cleanLine(text: string): string {
+        return text
+            .replace(/^#{1,3}\s+/g, "")
+            .replace(/^>\s+/g, "")
+            .replace(/\*\*(.+?)\*\*/g, "$1")
+            .replace(/\*(.+?)\*/g, "$1")
+            .replace(/\s*---+\s*/g, " — ")
+            .replace(/^[-–—]+\s*/g, "")
+            .replace(/🎺|🎙️/g, "")
+            .trim();
+    }
+
     useEffect(() => {
+        if (!sessionId || sessionId === "anon") {
+            setIsLoading(false);
+            setIsEmpty(true);
+            return;
+        }
         fetch(`/api/awards?sessionId=${sessionId}`)
             .then((r) => r.json())
             .then((d) => {
-                setRoast(d.roast ?? "No awards yet — need at least one matchday.");
+                if (d.empty || !d.roast) {
+                    setIsEmpty(true);
+                } else {
+                    setRoast(d.roast);
+                }
                 setIsLoading(false);
             })
             .catch(() => {
@@ -54,18 +76,28 @@ export function AwardsModal({
                                 COMPILING RECEIPTS...
                             </div>
                         </div>
+                    ) : isEmpty ? (
+                        <div className="flex flex-col items-center justify-center h-32 gap-3 text-center">
+                            <div className="text-4xl">⏳</div>
+                            <div className="font-mono text-sm text-white/40">
+                                <p className="text-white/60 font-bold mb-1">NO RECEIPTS YET.</p>
+                                <p>Trigger at least one matchday first.</p>
+                                <p className="text-xs mt-1 text-white/25">The pundits need to incriminate themselves before the roast.</p>
+                            </div>
+                        </div>
                     ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
                             {roast.split("\n").map((line, i) =>
                                 line.trim() ? (
                                     <p
                                         key={i}
-                                        className={`text-sm leading-relaxed ${line.startsWith("1.") || line.startsWith("2.") || line.startsWith("3.") || line.startsWith("4.")
+                                        className={`text-sm leading-relaxed ${line.startsWith("1.") || line.startsWith("2.") ||
+                                                line.startsWith("3.") || line.startsWith("4.")
                                                 ? "font-bold text-yellow-400 font-mono"
                                                 : "text-white/80"
                                             }`}
                                     >
-                                        {line}
+                                        {cleanLine(line)}
                                     </p>
                                 ) : (
                                     <br key={i} />

@@ -5,6 +5,7 @@ import { MessageBubble } from "@/components/MessageBubble";
 import { MemoryInspector } from "@/components/MemoryInspector";
 import { Scoreboard } from "@/components/Scoreboard";
 import { AwardsModal } from "@/components/AwardsModal";
+import { HowItWorks } from "@/components/HowItWorks";
 
 type Citation = { text: string; blobId: string; explorerUrl: string };
 type ChatMessage = {
@@ -27,6 +28,15 @@ function getSessionId() {
   return id;
 }
 
+function dedupeMessages(msgs: ChatMessage[]): ChatMessage[] {
+  const seen = new Set<string>();
+  return msgs.filter((m) => {
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -46,6 +56,7 @@ export default function Home() {
   } | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+  const messageCountRef = useRef(0);
 
   useEffect(() => {
     setSessionId(getSessionId());
@@ -54,8 +65,29 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/chat?limit=100")
       .then((r) => r.json())
-      .then((d) => { if (d.messages) setMessages(d.messages); });
+      .then((d) => {
+        if (d.messages) {
+          setMessages(dedupeMessages(d.messages));
+          messageCountRef.current = d.messages.length;
+        }
+      });
     loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch("/api/chat?limit=100");
+        const d = await r.json();
+        if (d.messages && d.messages.length !== messageCountRef.current) {
+          messageCountRef.current = d.messages.length;
+          setMessages(dedupeMessages(d.messages));
+          loadStats();
+        }
+      } catch { /* ignore */ }
+    }, 5000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -79,7 +111,8 @@ export default function Home() {
       });
       const d = await r.json();
       if (d.messages) {
-        setMessages((prev) => [...prev, ...d.messages]);
+        setMessages((prev) => dedupeMessages([...prev.filter(m => !m.id.startsWith("temp-")), ...d.messages]));
+        messageCountRef.current = d.messages.length;
         loadStats();
       }
     } finally {
@@ -94,10 +127,10 @@ export default function Home() {
     setIsLoading(true);
 
     const tempId = "temp-" + Date.now();
-    setMessages((prev) => [...prev, {
+    setMessages((prev) => dedupeMessages([...prev, {
       id: tempId, punditId: "user", message: text,
       timestamp: new Date().toISOString(),
-    }]);
+    }]));
 
     try {
       const r = await fetch("/api/chat", {
@@ -107,7 +140,10 @@ export default function Home() {
       });
       const d = await r.json();
       if (d.responses) {
-        setMessages((prev) => [...prev.filter((m) => m.id !== tempId), ...d.responses]);
+        setMessages((prev) => dedupeMessages([
+          ...prev.filter((m) => m.id !== tempId),
+          ...d.responses,
+        ]));
         loadStats();
       }
     } finally {
@@ -118,12 +154,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-[#0a0a0f] text-white overflow-hidden">
-      {/* Left sidebar */}
       <aside className="hidden lg:flex flex-col w-72 border-r border-white/10 p-4 gap-4 overflow-y-auto shrink-0">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl font-black tracking-tighter text-yellow-400 font-mono">RECEIPTS FC</span>
+        <div className="flex flex-col items-center gap-1 mb-2">
+          <img src="/logo.svg" alt="Receipts FC" className="w-36 h-auto" />
         </div>
         {stats && <Scoreboard stats={stats} onAwards={() => setShowAwards(true)} />}
+        <HowItWorks />
         <button
           onClick={handleMatchday}
           disabled={isMatchdayLoading}
@@ -133,10 +169,10 @@ export default function Home() {
         </button>
       </aside>
 
-      {/* Main chat */}
       <main className="flex flex-col flex-1 min-w-0">
         <header className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#0a0a0f]/80 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="Receipts FC" className="w-8 h-8 rounded-full border border-yellow-400/30" />
             <span className="font-mono font-black text-yellow-400 text-lg tracking-tighter">RECEIPTS FC</span>
             <span className="text-xs text-white/40 font-mono hidden sm:block">WORLD CUP 2026</span>
           </div>
